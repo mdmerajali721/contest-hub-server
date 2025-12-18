@@ -11,6 +11,8 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors());
 
+// const serviceAccount = require("./contesthubbd-fb-admin-key.json");
+
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
   "utf8"
 );
@@ -38,6 +40,7 @@ const verifyFBToken = async (req, res, next) => {
   }
 };
 
+// Create a MongoClient
 const client = new MongoClient(process.env.DB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -47,11 +50,11 @@ const client = new MongoClient(process.env.DB_URI, {
 });
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("contesthubDB");
-    const usersCollection = database.collection("users");
     const contestsCollection = database.collection("contests");
+    const usersCollection = database.collection("users");
     const paymentsCollection = database.collection("payments");
 
     // middleware more with database access
@@ -67,6 +70,7 @@ async function run() {
       next();
     };
 
+    // get all user
     app.get("/users", async (req, res) => {
       try {
         const result = await usersCollection.find().toArray();
@@ -81,10 +85,8 @@ async function run() {
     app.get("/users/:email/role", async (req, res) => {
       try {
         const email = req.params.email;
-
         const query = { email };
         const result = await usersCollection.findOne(query);
-
         res.send({ role: result?.role || "user" });
       } catch (error) {
         console.error(error);
@@ -114,6 +116,8 @@ async function run() {
     app.patch("/users/:id/info", async (req, res) => {
       try {
         const id = req.params.id;
+
+        // const updatedInfo = req.body;    
         const filter = { _id: new ObjectId(id) };
         const updatedDoc = { $set: req.body };
         const result = await usersCollection.updateOne(filter, updatedDoc);
@@ -135,12 +139,12 @@ async function run() {
             projection: { winCount: 1 },
           }
         );
-
+        
         const { winCount } = userResult;
+
+        // Default 0 if undefined / null / ""
         const current = parseInt(winCount) || 0;
-
         const totalWinCount = current + 1;
-
         const result = await usersCollection.updateOne(
           { email },
           {
@@ -148,6 +152,9 @@ async function run() {
           }
         );
 
+        // const filter = { _id: new ObjectId(id) };
+        // const updatedDoc = { set: req.body };
+        // const result = await usersCollection.updateOne(filter, updatedDoc);
         res.send(result);
       } catch (error) {
         console.error(error);
@@ -159,6 +166,7 @@ async function run() {
     app.patch("/users/:id", verifyFBToken, verifyAdmin, async (req, res) => {
       try {
         const id = req.params.id;
+
         const filter = { _id: new ObjectId(id) };
         const updatedDoc = { $set: req.body };
         const result = await usersCollection.updateOne(filter, updatedDoc);
@@ -183,7 +191,6 @@ async function run() {
         if (existUser) {
           return res.send("User Already Exist");
         }
-
         const result = await usersCollection.insertOne(req.body);
         res.status(201).send(result);
       } catch (error) {
@@ -234,7 +241,9 @@ async function run() {
         const session = await stripe.checkout.sessions.retrieve(sessionId);
 
         const transactionId = session.payment_intent;
+        // const contestId = session.metadata.contestId;
         const query = { transactionId };
+
         const paymentExist = await paymentsCollection.findOne(query);
         if (paymentExist) {
           return res.send({
@@ -277,11 +286,9 @@ async function run() {
           const participantsResult = await contestsCollection.findOne(query, {
             projection: { participants: 1 },
           });
-
           const { participants } = participantsResult;
           const current = parseInt(participants) || 0;
           const totalParticipants = current + 1;
-
           await contestsCollection.updateOne(query, {
             $set: { participants: totalParticipants },
           });
@@ -310,6 +317,9 @@ async function run() {
       try {
         const contestParticipantEmail = req.query.contestParticipantEmail;
         const query = { contestParticipantEmail };
+        // if (contestParticipantEmail) {
+        //   query.contestParticipantEmail = contestParticipantEmail;
+        // }
         const sortFields = { contestDeadline: 1 };
 
         const result = await paymentsCollection
@@ -338,6 +348,7 @@ async function run() {
       }
     });
 
+    // submitted true and task submitted
     app.patch("/payments/:id", verifyFBToken, async (req, res) => {
       try {
         const id = req.params.id;
@@ -355,6 +366,8 @@ async function run() {
       }
     });
 
+    
+    // get all by admin
     app.get("/contests", verifyFBToken, verifyAdmin, async (req, res) => {
       try {
         const result = await contestsCollection.find().toArray();
@@ -413,7 +426,6 @@ async function run() {
     app.get("/contests/all-users", async (req, res) => {
       try {
         const status = req.query.status;
-
         const query = {};
 
         if (status) {
@@ -462,6 +474,11 @@ async function run() {
     app.get("/contests/winner/contests", verifyFBToken, async (req, res) => {
       try {
         const email = req.query.email;
+        // const query = {}
+        // if (email) {
+        //   query.winner.email: email
+        // }
+
         const result = await contestsCollection
           .find({ "winner.email": email })
           .toArray();
@@ -486,6 +503,7 @@ async function run() {
       }
     });
 
+    // update contest role for admin
     app.patch(
       "/contests/:id/admin",
 
@@ -494,6 +512,7 @@ async function run() {
       async (req, res) => {
         try {
           const status = req.body.newStatus;
+
           const id = req.params.id;
           const filter = { _id: new ObjectId(id) };
           const updatedDoc = { $set: { status } };
@@ -555,6 +574,7 @@ async function run() {
       }
     });
 
+    // deleted contest by admin
     app.delete(
       "/contests/:id",
 
@@ -572,7 +592,7 @@ async function run() {
         }
       }
     );
-
+    // deleted contest by creator
     app.delete("/contests/creator/:id", verifyFBToken, async (req, res) => {
       try {
         const id = req.params.id;
@@ -584,7 +604,14 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
+
+    // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
+    // await client.close();
   }
 }
 run().catch(console.dir);

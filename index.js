@@ -512,6 +512,55 @@ async function run() {
         }
       }
     );
+
+    // contest winner updated by creator
+    app.patch("/contests/:id/creator", verifyFBToken, async (req, res) => {
+      try {
+        const win = req.body;
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            winner: win,
+          },
+        };
+        const result = await contestsCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // update contest for creator
+    app.patch("/contests/:id/update", verifyFBToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const contest = req.body;
+
+        const contestInfo = {
+          deadline: contest.deadline,
+          description: contest.description,
+          image: contest.image,
+          instructions: contest.instructions,
+          name: contest.name,
+          price: contest.price,
+          prizeMoney: contest.prizeMoney,
+          type: contest.type,
+        };
+
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: contestInfo,
+        };
+        const result = await contestsCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
   
   
 app.get("/", (req, res) => {

@@ -459,6 +459,59 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
+
+    // contests winner get by winner email
+    app.get("/contests/winner/contests", verifyFBToken, async (req, res) => {
+      try {
+        const email = req.query.email;
+        const result = await contestsCollection
+          .find({ "winner.email": email })
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // created contest
+    app.post("/contests", verifyFBToken, async (req, res) => {
+      try {
+        const contest = req.body;
+        // console.log(contest);
+        contest.status = "Pending";
+        contest.createdAt = new Date();
+        const result = await contestsCollection.insertOne(contest);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // update contest role for admin
+    app.patch(
+      "/contests/:id/admin",
+
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const status = req.body.newStatus;
+          // console.log(status)
+
+          const id = req.params.id;
+          const filter = { _id: new ObjectId(id) };
+          const updatedDoc = { $set: { status } };
+          // console.log('check',filter,req.body)
+          const result = await contestsCollection.updateOne(filter, updatedDoc);
+          res.send(result);
+        } catch (error) {
+          console.error(error);
+          res.status(500).send({ message: "Server Error" });
+        }
+      }
+    );
   
   
 app.get("/", (req, res) => {

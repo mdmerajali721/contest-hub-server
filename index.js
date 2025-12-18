@@ -81,10 +81,10 @@ async function run() {
     app.get("/users/:email/role", async (req, res) => {
       try {
         const email = req.params.email;
-        
+
         const query = { email };
         const result = await usersCollection.findOne(query);
-        
+
         res.send({ role: result?.role || "user" });
       } catch (error) {
         console.error(error);
@@ -414,7 +414,7 @@ async function run() {
     app.get("/contests/all-users", async (req, res) => {
       try {
         const status = req.query.status;
-        
+
         const query = {};
 
         if (status) {
@@ -561,8 +561,41 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
-  
-  
+
+    app.delete(
+      "/contests/:id",
+
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+          const result = await contestsCollection.deleteOne(query);
+          res.send(result);
+        } catch (error) {
+          console.error(error);
+          res.status(500).send({ message: "Server Error" });
+        }
+      }
+    );
+
+    app.delete("/contests/creator/:id", verifyFBToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await contestsCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+  } finally {
+  }
+}
+run().catch(console.dir);
+
 app.get("/", (req, res) => {
   res.send("Contest Hub Server is Running");
 });

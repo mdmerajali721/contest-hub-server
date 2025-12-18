@@ -76,6 +76,121 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
+
+    //   user role get
+    app.get("/users/:email/role", async (req, res) => {
+      try {
+        const email = req.params.email;
+        
+        const query = { email };
+        const result = await usersCollection.findOne(query);
+        
+        res.send({ role: result?.role || "user" });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // get one user
+    app.get("/users/one", async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = {};
+
+        if (email) {
+          query.email = email;
+        }
+
+        const result = await usersCollection.findOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // update user info
+    app.patch("/users/:id/info", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = { $set: req.body };
+        const result = await usersCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // updated win count
+    app.patch("/users/win-count/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+
+        const userResult = await usersCollection.findOne(
+          { email },
+          {
+            projection: { winCount: 1 },
+          }
+        );
+
+        const { winCount } = userResult;
+        const current = parseInt(winCount) || 0;
+
+        const totalWinCount = current + 1;
+
+        const result = await usersCollection.updateOne(
+          { email },
+          {
+            $set: { winCount: totalWinCount },
+          }
+        );
+
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // update user role
+    app.patch("/users/:id", verifyFBToken, verifyAdmin, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = { $set: req.body };
+        const result = await usersCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    //   user created
+    app.post("/users", async (req, res) => {
+      try {
+        const user = req.body;
+        user.role = "user";
+        user.createdAt = new Date();
+        user.status = "Active";
+
+        const email = user.email;
+
+        const existUser = await usersCollection.findOne({ email });
+        if (existUser) {
+          return res.send("User Already Exist");
+        }
+
+        const result = await usersCollection.insertOne(req.body);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
   
   
 app.get("/", (req, res) => {

@@ -268,6 +268,60 @@ async function run() {
             contestId: session.metadata.contestId,
           });
         }
+
+        // participants added
+        if (session.payment_status === "paid") {
+          const contestId = session.metadata.contestId;
+          const query = { _id: new ObjectId(contestId) };
+
+          const participantsResult = await contestsCollection.findOne(query, {
+            projection: { participants: 1 },
+          });
+
+          const { participants } = participantsResult;
+          const current = parseInt(participants) || 0;
+          const totalParticipants = current + 1;
+
+          await contestsCollection.updateOne(query, {
+            $set: { participants: totalParticipants },
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // payment status
+    app.get("/payments/payment-status", async (req, res) => {
+      try {
+        const { contestId, contestParticipantEmail } = req.query;
+        const query = { contestId, contestParticipantEmail };
+        const result = await paymentsCollection.findOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // participated contests
+    app.get("/payments/all-contests", async (req, res) => {
+      try {
+        const contestParticipantEmail = req.query.contestParticipantEmail;
+        const query = { contestParticipantEmail };
+        const sortFields = { contestDeadline: 1 };
+
+        const result = await paymentsCollection
+          .find(query)
+          .sort(sortFields)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
   
   
 app.get("/", (req, res) => {

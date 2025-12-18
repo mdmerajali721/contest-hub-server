@@ -322,6 +322,48 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
+
+    // payments task-submitted
+    app.get("/payments/task-submitted", async (req, res) => {
+      try {
+        const { contestId } = req.query;
+        const submitted = true;
+
+        const query = { contestId, submitted };
+        const result = await paymentsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    app.patch("/payments/:id", verifyFBToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { contestParticipantEmail } = req.query;
+        const filter = { _id: new ObjectId(id), contestParticipantEmail };
+
+        const updatedDoc = {
+          $set: req.body,
+        };
+        const result = await paymentsCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    app.get("/contests", verifyFBToken, verifyAdmin, async (req, res) => {
+      try {
+        const result = await contestsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
   
   
 app.get("/", (req, res) => {

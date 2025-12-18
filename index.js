@@ -191,6 +191,83 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
+
+    // PAYMENTS RELATED API'S
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const amount = parseInt(paymentInfo.contestPrice) * 100;
+
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "USD",
+              unit_amount: amount,
+              product_data: {
+                name: paymentInfo?.contestName,
+                description: paymentInfo?.contestDescription,
+                images: [paymentInfo?.contestImage],
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo?.participant?.email,
+        mode: "payment",
+        metadata: {
+          contestId: paymentInfo.contestId,
+          customer: paymentInfo.participant.email,
+          deadline: paymentInfo.contestDeadline,
+          name: paymentInfo?.contestName,
+        },
+        success_url: `${process.env.SITE_DOMAIN}/contest/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.SITE_DOMAIN}/contest/payment-cancelled`,
+      });
+      res.send({ url: session.url });
+    });
+
+    // post payment
+    app.post("/payment-success", async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+        const transactionId = session.payment_intent;
+        const query = { transactionId };
+        const paymentExist = await paymentsCollection.findOne(query);
+        if (paymentExist) {
+          return res.send({
+            message: "already exists",
+            transactionId,
+            amount: session.amount_total / 100,
+            contestId: session.metadata.contestId,
+          });
+        }
+
+        const payment = {
+          transactionId: session.payment_intent,
+          paymentStatus: session.payment_status,
+          amount: session.amount_total / 100,
+          currency: session.currency,
+          contestParticipantEmail: session.customer_email,
+          contestId: session.metadata.contestId,
+          contestDeadline: session.metadata.deadline,
+          contestName: session.metadata.name,
+          submitted: null,
+          paidAt: new Date(),
+        };
+
+        if (session.payment_status === "paid") {
+          const resultPayment = await paymentsCollection.insertOne(payment);
+          res.send({
+            success: true,
+            paymentInfo: resultPayment,
+            amount: session.amount_total / 100,
+            transactionId: session.payment_intent,
+            contestId: session.metadata.contestId,
+          });
+        }
   
   
 app.get("/", (req, res) => {

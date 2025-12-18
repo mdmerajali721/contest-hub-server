@@ -364,6 +364,101 @@ async function run() {
         res.status(500).send({ message: "Server Error" });
       }
     });
+
+    // /contests/all-users/search
+    app.get("/contests/all-users/search", async (req, res) => {
+      try {
+        const { searchText } = req.query;
+
+        let query = {
+          status: "Confirmed",
+        };
+
+        if (searchText) {
+          query.$or = [
+            { name: { $regex: searchText, $options: "i" } },
+
+            { type: { $regex: searchText, $options: "i" } },
+          ];
+        }
+
+        const result = await contestsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // get all contests by creator email
+    app.get("/contests/creator", verifyFBToken, async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = {};
+        // console.log(email);
+        if (!email) {
+          return res.send({ message: "creator email not found" });
+        } else {
+          query.email = email;
+        }
+
+        const result = await contestsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // get all contest for all users
+    app.get("/contests/all-users", async (req, res) => {
+      try {
+        const status = req.query.status;
+        
+        const query = {};
+
+        if (status) {
+          query.status = status;
+        }
+
+        const result = await contestsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+
+    // get popular contests
+    app.get("/contests/popular-contests", async (req, res) => {
+      try {
+        const status = req.query.status;
+        // console.log(status);
+        const sortFields = { participants: -1 };
+        const limitNum = 6;
+        const result = await contestsCollection
+          .find({ status })
+          .sort(sortFields)
+          .limit(limitNum)
+          .toArray();
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
+    // get one contest
+    app.get("/contests/:id", verifyFBToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await contestsCollection.findOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
   
   
 app.get("/", (req, res) => {

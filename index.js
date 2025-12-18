@@ -395,7 +395,6 @@ async function run() {
       try {
         const email = req.query.email;
         const query = {};
-        // console.log(email);
         if (!email) {
           return res.send({ message: "creator email not found" });
         } else {
@@ -433,7 +432,6 @@ async function run() {
     app.get("/contests/popular-contests", async (req, res) => {
       try {
         const status = req.query.status;
-        // console.log(status);
         const sortFields = { participants: -1 };
         const limitNum = 6;
         const result = await contestsCollection
@@ -478,7 +476,6 @@ async function run() {
     app.post("/contests", verifyFBToken, async (req, res) => {
       try {
         const contest = req.body;
-        // console.log(contest);
         contest.status = "Pending";
         contest.createdAt = new Date();
         const result = await contestsCollection.insertOne(contest);
@@ -489,7 +486,6 @@ async function run() {
       }
     });
 
-    // update contest role for admin
     app.patch(
       "/contests/:id/admin",
 
@@ -498,12 +494,9 @@ async function run() {
       async (req, res) => {
         try {
           const status = req.body.newStatus;
-          // console.log(status)
-
           const id = req.params.id;
           const filter = { _id: new ObjectId(id) };
           const updatedDoc = { $set: { status } };
-          // console.log('check',filter,req.body)
           const result = await contestsCollection.updateOne(filter, updatedDoc);
           res.send(result);
         } catch (error) {
